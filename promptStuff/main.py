@@ -58,3 +58,26 @@ def saveNotebook(notebook: str):
     return
 
 
+# main function
+def main(url: str):
+    """
+    main(url: str) -> none
+    """
+    # get the layout of the jupyter notebook
+    layout = getLayout(url)
+    # for each section of the layout, generate the code for that section
+    code = []
+    for section in layout:
+        # get the prompt for the section
+        prompt = getSectionPrompt(section)
+        # get the context for the section
+        context = getSectionContext(prompt)
+        # get the code for the section
+        code.append(getSectionCode(section, context))
+    # stitch together and markup all of the code sections to create the final jupyter notebook
+    notebook = stitchNotebook(layout, code)
+    # check formatting, correctness, etc. of the final jupyter notebook
+    notebook = checkNotebook(notebook)
+    # save the stitched together code as a jupyter notebook
+    saveNotebook(notebook)
+    return
