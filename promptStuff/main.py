@@ -1,4 +1,20 @@
+import validators
 
+
+# ensures the url is properly formatted
+def validateUrlFormat(url: str):
+    """
+    validateUrlFormat(url: str) -> bool
+    """
+    # check if the url is a string
+    if not isinstance(url, str):
+        return False
+    # check if the url is a valid url
+    if not validators.url(url):
+        return False
+    
+    return True
+        
 
 # use langchain and ingested paper to query for what the jupyter notebook layout should look like
 # create functino decorato
