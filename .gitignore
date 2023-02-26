@@ -1,3 +1,7 @@
+*.tex
+*.pdf
+
+
 # Logs
 logs
 *.log
