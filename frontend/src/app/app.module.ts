@@ -3,18 +3,16 @@ import { BrowserModule } from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import {UploadComponent} from "./gym-setup/upload.component";
-import {ReactiveFormsModule} from "@angular/forms";
+import { UploaderComponent } from './uploader/uploader.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    UploadComponent
+    UploaderComponent
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule,
-    ReactiveFormsModule
+    AppRoutingModule
   ],
   providers: [],
   bootstrap: [AppComponent]

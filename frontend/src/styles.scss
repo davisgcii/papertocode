@@ -1,5 +1,5 @@
 /* You can add global styles to this file, and also import other style files */
-/*
+//https://www.npmjs.com/package/inter-ui
 @use "~inter-ui/default" with (
   $inter-font-display: swap,
   $inter-font-path: '~inter-ui/Inter (web)'
@@ -10,7 +10,6 @@
 );
 @include default.all;
 @include variable.all;
-*/
 
 html { font-family: "Inter", "system-ui"; }
 

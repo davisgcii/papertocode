@@ -13,10 +13,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
-.inputFlexbox {
-  display: flex;
-  flex-direction: column;
-}
 .GymSteup__stepHidden {
   opacity: 0 !important;
 }
@@ -31,7 +27,7 @@
   transition: opacity 250ms ease 0ms;
 }
 .GymSetup__stepOneDescription {
-  font-family: Inter;
+  font-family: 'Inter UI', Inter;
   font-style: normal;
   font-weight: 500;
   line-height: 32px;
@@ -208,7 +204,7 @@
 .GymSetup__upcomingStep {
   margin-left: 12px;
   padding: 4px;
-//font
+  //font
   color: rgb(107, 111, 118);
   font-size: 15px;
   font-style: normal;
