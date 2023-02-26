@@ -17,12 +17,19 @@ if uploaded_file is not None:
 
     # To read file as string:
     string_data = stringio.read()
-    col1.header(len(string_data))
+    # col1.header(len(string_data))
 
     with st.expander("Show LaTeX"):
         st.header("Paper Contents")
         st.code(rf"""{string_data} """, language="latex")
 
+
+    bar = st.progress(0, "Generating Code")
+    code = "import torch"
+    for complete in range(5):
+        code += generate_code(string_data, model_name=os.environ["OPENAI_MODEL_NAME"], code=code)
+        bar.progress((complete + 1) * 20)
+        
     with st.expander("Show Generated Code"):
         st.header("Generated Code")
-        st.code(generate_code(string_data, model_name=os.environ["OPENAI_MODEL_NAME"]))
+        st.code(code)

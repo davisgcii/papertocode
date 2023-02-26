@@ -30,7 +30,7 @@ Your Code Here
 ######################
 """
 
-def generate_code(paper_str: str, model_name: str = "code-davinci-002"):
+def generate_code(paper_str: str, model_name: str = "code-davinci-002", code="import torch"):
 
     llm = OpenAI(model_name=model_name)
     code = "import torch"
