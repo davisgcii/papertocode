@@ -1,8 +1,8 @@
 import re
 
-def split_sections():
+def split_sections(path):
     
-    with open('./control.tex', 'r') as f:
+    with open(path, 'r') as f:
       tex_string = f.read()
     
     # find all section titles and their starting index
@@ -24,6 +24,4 @@ def split_sections():
     return section_dict
 
 
-sections = split_sections()
-
-print(sections['Introduction'])
+sections = split_sections('./control.tex')
