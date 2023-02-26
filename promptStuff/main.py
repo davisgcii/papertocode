@@ -16,7 +16,7 @@ def getSectionPrompt(section: str):
     """
     return
 
-### for each prompt, query langchain to get the portions of the paper that are most relevant to that code section
+### for each section of the layout, query langchain to get the portions of the paper that are most relevant to that code section
 def getSectionContext(prompt: str):
     """
     getSectionContext(prompt: str) -> context: str
