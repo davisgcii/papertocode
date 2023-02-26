@@ -1,0 +1,199 @@
+  <div class="GymSetup__flexParent">
+  <div *ngIf="currStep ===1" class="GymSetup__stepOne" [ngClass]="{'GymSteup__stepHidden': stepOne !== 1}">
+    <div class="GymSetup__stepOneDescription">First Lets learn a bit about your gym</div>
+    <div class="GymSetup__stepOneadditionalInfo">The info we collect will be shown to in the app to people looking for a gym</div>
+    <div class="GymSetup__stepBox">
+      <form class="GymSetup__stepOneForm">
+      <label class="GymSetup__LabelText GymSetup__stepOneGymNameLabelSpacer">Gym Name</label>
+      <input class="GymSetup__textInput GymSetup__stepOneInputSpacer" type="text">
+      <label class="GymSetup__LabelText GymSetup__stepOneLabelSpacer">Gym Phone Number</label>
+      <input class="GymSetup__textInput GymSetup__stepOneInputSpacer" type="text" appPhoneMask>
+      <label class="GymSetup__LabelText GymSetup__stepOneLabelSpacer">Address</label>
+      <input class="GymSetup__textInput GymSetup__stepOneInputSpacer" type="text">
+      <label class="GymSetup__LabelText GymSetup__stepOneLabelSpacer">Website</label>
+      <input class="GymSetup__textInput GymSetup__stepOneInputSpacer" type="text">
+      <label class="GymSetup__LabelText GymSetup__stepOneLabelSpacer">Description: tell people a little about your gym</label>
+      <textarea class="GymSetup__textInput GymSetup__stepOneInputSpacer GymSetup__descriptionTextBox"></textarea>
+      </form>
+    </div>
+    <button class="GymSetup__StepOneButton" (click)="stepOneContinue()">Continue</button>
+
+  </div>
+
+    <div *ngIf="currStep ===2" class="GymSetup__stepOne" [ngClass]="{'GymSteup__stepHidden': stepOne !== 2}">
+      <div class="GymSetup__stepOneDescription">What are your hours of operation?</div>
+      <div class="GymSetup__stepOneadditionalInfo">Please only enter hours someone will need to be present to check people in for a workout</div>
+      <div class="GymSetup__stepTwoBox">
+        <form class="GymSetup__stepOneForm">
+
+          <div class="GymSetup__stepTwoDayOfWeek">
+            <label class="GymSetup__dayLabelText">Monday</label>
+            <div class="GymSetup__StepTwoHoursInputFlex">
+              <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required> <span>-</span> <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required>
+            </div>
+            <input class="GymSetup__closeCheckboxInput" type="checkbox"><label class="GymSetup__openClose">Closed</label>
+          </div>
+
+
+          <div class="GymSetup__stepTwoDayOfWeek">
+            <label class="GymSetup__dayLabelText">Tuesday</label>
+            <div class="GymSetup__StepTwoHoursInputFlex">
+              <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required> <span>-</span> <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required>
+            </div>
+            <input class="GymSetup__closeCheckboxInput" type="checkbox"><label class="GymSetup__openClose">Closed</label>
+          </div>
+
+
+          <div class="GymSetup__stepTwoDayOfWeek">
+            <label class="GymSetup__dayLabelText">Wednesday</label>
+            <div class="GymSetup__StepTwoHoursInputFlex">
+              <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required> <span>-</span> <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required>
+            </div>
+            <input class="GymSetup__closeCheckboxInput" type="checkbox"><label class="GymSetup__openClose">Closed</label>
+          </div>
+
+
+          <div class="GymSetup__stepTwoDayOfWeek">
+            <label class="GymSetup__dayLabelText">Thursday</label>
+            <div class="GymSetup__StepTwoHoursInputFlex">
+              <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required> <span>-</span> <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required>
+            </div>
+            <input class="GymSetup__closeCheckboxInput" type="checkbox"><label class="GymSetup__openClose">Closed</label>
+          </div>
+
+
+          <div class="GymSetup__stepTwoDayOfWeek">
+            <label class="GymSetup__dayLabelText">Friday</label>
+            <div class="GymSetup__StepTwoHoursInputFlex">
+              <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required> <span>-</span> <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required>
+            </div>
+            <input class="GymSetup__closeCheckboxInput" type="checkbox"><label class="GymSetup__openClose">Closed</label>
+          </div>
+
+
+          <div class="GymSetup__stepTwoDayOfWeek">
+            <label class="GymSetup__dayLabelText">Saturday</label>
+            <div class="GymSetup__StepTwoHoursInputFlex">
+              <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required> <span>-</span> <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required>
+            </div>
+            <input class="GymSetup__closeCheckboxInput" type="checkbox"><label class="GymSetup__openClose">Closed</label>
+          </div>
+
+
+          <div class="GymSetup__stepTwoDayOfWeek">
+            <label class="GymSetup__dayLabelText">Sunday</label>
+            <div class="GymSetup__StepTwoHoursInputFlex">
+              <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required> <span>-</span> <input class="GymSetup__hoursInput GymSetup__stepTwoInputSpacer" type="time"  name="mondayOpen"  required>
+            </div>
+            <input class="GymSetup__closeCheckboxInput" type="checkbox"><label class="GymSetup__openClose">Closed</label>
+          </div>
+
+
+          <label class="GymSetup__LabelText GymSetup__stepOneLabelSpacer">Holiday Schedule: Please list any holiday hours or closures. You can always update your hours later if they change.</label>
+          <textarea class="GymSetup__textInput GymSetup__stepOneInputSpacer GymSetup__descriptionTextBox"></textarea>
+        </form>
+      </div>
+      <button class="GymSetup__StepOneButton" (click)="stepOneContinue()">Continue</button>
+
+    </div>
+
+    <div *ngIf="currStep ===3" class="GymSetup__stepOne" [ngClass]="{'GymSteup__stepHidden': stepOne !== 3}">
+      <div class="GymSetup__stepOneDescription">What equipment and amenities are available?</div>
+      <div class="GymSetup__stepOneadditionalInfo">Be sure to include available services and items for purchase</div>
+      <div class="GymSetup__stepTwoBox">
+        <form class="GymSetup__amenitiesForm">
+          <div class="GymSetup__ammenitiesFlexRow">
+
+            <!-- Column #2-->
+          <div class="GymSetup__ammenitiesColumnOne">
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+          </div>
+
+          <!-- Column #2-->
+          <div class="GymSetup__ammenitiesColumnTwo">
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+            <div class="GymSetup__stepThreeAmenitiesFlex">
+              <input class="GymSetup__amenitiesCheckboxInput" type="checkbox"><label class="GymSetup__amenitiesCheckboxLabel">Dumbells</label>
+            </div>
+          </div>
+
+
+
+
+
+          </div>
+          <label class="GymSetup__LabelText GymSetup__stepOneLabelSpacer">Additional Amenities</label><textarea class="GymSetup__textInput GymSetup__stepOneInputSpacer GymSetup__descriptionTextBox"></textarea>
+        </form>
+      </div>
+      <button class="GymSetup__StepOneButton" (click)="stepOneContinue()">Continue</button>
+
+    </div>
+
+    <div *ngIf="currStep ===4" class="GymSetup__stepOne" [ngClass]="{'GymSteup__stepHidden': stepOne !== 4}">
+      <div class="GymSetup__stepOneDescription">Pictures</div>
+      <div class="GymSetup__stepOneadditionalInfo">Pictures are optional but highly recommended</div>
+      <div class="GymSetup__stepTwoBox">
+        <form class="GymSetup__amenitiesForm">
+          <input type="file" data-multiple-caption="{count} files selected" multiple>
+        </form>
+      </div>
+      <button class="GymSetup__StepOneButton" (click)="stepOneContinue()">Continue</button>
+
+    </div>
+
+    <div *ngIf="currStep ===5" class="GymSetup__stepOne" [ngClass]="{'GymSteup__stepHidden': stepOne !== 5}">
+      <div class="GymSetup__stepOneDescription">Liability Waiver</div>
+      <div class="GymSetup__stepOneadditionalInfo">If you have a liability waiver which you need signed before a workout you can upload it here to have members agree before checking in. You can always update this later if required.</div>
+      <div class="GymSetup__stepTwoBox">
+        <form class="GymSetup__amenitiesForm">
+          <input type="file" data-multiple-caption="{count} files selected" multiple>
+        </form>
+      </div>
+      <button class="GymSetup__StepOneButton" (click)="stepOneContinue()">Continue</button>
+
+    </div>
+
+    <div *ngIf="currStep ===6" class="GymSetup__stepOne" [ngClass]="{'GymSteup__stepHidden': stepOne !== 6}">
+      <div class="GymSetup__stepOneDescription">Members</div>
+      <div class="GymSetup__stepOneadditionalInfo">This helps up understand the needs of your gym and grow its membership</div>
+      <div class="GymSetup__stepTwoBox">
+        <form class="GymSetup__amenitiesForm">
+          <label class="GymSetup__LabelText GymSetup__stepOneLabelSpacer">How many members does your gym have today?</label><textarea class="GymSetup__textInput GymSetup__stepOneInputSpacer GymSetup__descriptionTextBox"></textarea>
+        </form>
+      </div>
+      <button class="GymSetup__StepOneButton" (click)="stepOneContinue()">Continue</button>
+
+    </div>
+
+
+<div class="GymSetup__stepsSectionFlexParent">
+    <div class="GymSetup__stepsHeader">Steps</div>
+    <div class="GymSetup__stepsStateFlex">
+      <span class="GymSetup__upcomingStep" [ngClass]="{'GymSetup__currentStep' : stepOne === 1}">Basic Info</span>
+      <span class="GymSetup__upcomingStep" [ngClass]="{'GymSetup__currentStep' : stepOne === 2}">Hours</span>
+      <span class="GymSetup__upcomingStep" [ngClass]="{'GymSetup__currentStep' : stepOne === 3}">Amenities</span>
+      <span class="GymSetup__upcomingStep" [ngClass]="{'GymSetup__currentStep' : stepOne === 4}">Pictures</span>
+      <span class="GymSetup__upcomingStep" [ngClass]="{'GymSetup__currentStep' : stepOne === 5}">Liability Waiver</span>
+      <span class="GymSetup__upcomingStep" [ngClass]="{'GymSetup__currentStep' : stepOne === 6 }">Members</span>
+    </div>
+</div>
+</div>

@@ -1,0 +1,285 @@
+.GymSetup__flexParent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100vh;
+
+
+  font-family: 'Inter UI', Inter;
+  font-style: normal;
+  font-weight: 500;
+  color: rgb(40, 42, 48);
+  letter-spacing: -0.24px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+.GymSteup__stepHidden {
+  opacity: 0 !important;
+}
+.GymSetup__stepOne {
+  display: flex;
+  flex-direction: column;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+  opacity: 1;
+  transition: opacity 250ms ease 0ms;
+}
+.GymSetup__stepOneDescription {
+  font-family: 'Inter UI', Inter;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 32px;
+  font-size: 24px;
+  color: rgb(40, 42, 48);
+  letter-spacing: -0.24px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.GymSetup__stepBox {
+  //width: 90%;
+  max-width: 564px;
+  height: 356px;
+  //background: lightgray;
+  box-shadow: rgb(0 0 0 / 15%) 0px 5px 20px;
+  border-radius: 8px;
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+}
+.GymSetup__stepOneForm {
+  display: flex;
+  flex-direction: column;
+}
+.GymSetup__StepOneButton {
+  font-family: 'Inter UI', Inter;
+  height: 48px;
+  width: 336px;
+  max-width: 90vw;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 48px;
+  background-color: rgb(0,0,0, 0);
+  font-size: 15px;
+  font-style: normal;
+  color: rgb(60, 65, 73);
+  font-weight: 500;
+  border-radius: 4px;
+  line-height: normal;
+  animation: 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.5s 1 normal both running;
+  transition-property: border, background-color, color, box-shadow, opacity;
+  transition-duration: 500ms;
+  padding: 0px 14px;
+  border: 1px solid rgb(223, 225,228)
+}
+.GymSetup__stepOneadditionalInfo {
+  margin-right: auto;
+  margin-left: auto;
+
+  color: rgb(107, 111, 118);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 23px;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  text-align: center;
+  max-width: 600px;
+}
+.GymSetup__LabelText {
+  font-family: 'Inter UI', Inter;
+  font-style: normal;
+  line-height: normal;
+  text-align: left;
+  color: rgb(60, 65, 73);
+  font-size: 13px;
+  font-weight: 500;
+}
+.GymSetup__stepOneGymNameLabelSpacer {
+  margin-bottom: 6px;
+}
+.GymSetup__stepTwoBox {
+  //width: 90%;
+  max-width: 564px;
+  height: 390px;
+  //background: lightgray;
+  box-shadow: rgb(0 0 0 / 15%) 0px 5px 20px;
+  border-radius: 8px;
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+}
+.GymSetup__stepTwoDayOfWeek {
+  display: flex;
+  margin-bottom: 12px;
+}
+.GymSetup__dayLabelText {
+  font-family: 'Inter UI', Inter;
+  font-style: normal;
+  line-height: normal;
+  text-align: left;
+  color: rgb(60, 65, 73);
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 3px;
+  margin-right: 12px;
+  width: 80px;
+}
+
+.GymSetup__StepTwoHoursInputFlex {
+  display: flex;
+  justify-content: space-between;
+  width: 220px;
+}
+.GymSetup__closeCheckboxInput {
+  margin-left: 24px;
+}
+.GymSetup__openClose {
+  color: rgb(107, 111, 118);
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 23px;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  text-align: center;
+  margin-top: 1.5px;
+  margin-left: 2px;
+}
+.GymSetup__stepOneLabelSpacer {
+  margin-bottom: 6px;
+  margin-top: 12px;
+}
+.GymSetup__stepOneInputSpacer {
+
+}
+.GymSetup__textInput {
+  appearance: none;
+  padding-left: 6px;
+  padding-right: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: rgb(255, 255, 255);
+  border: 1px solid rgb(223, 225, 228);
+  border-radius: 4px;
+  font-family: 'Inter UI', Inter;
+  font-size: 0.8125rem;
+  color: rgb(40, 42, 48);
+  margin: 0px;
+  appearance: none;
+  transition: border 0.3s;
+  app-region: no-drag;
+  resize: none;
+}
+.GymSetup__textInput:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: rgb(33, 96, 220)
+}
+.GymSetup__descriptionTextBox {
+  height: 60px;
+}
+.GymSetup__stepsSectionFlexParent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  margin-top: 24px;
+}
+.GymSetup__stepsHeader {
+  text-align: center;
+}
+.GymSetup__stepsStateFlex {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+.GymSetup__upcomingStep {
+  margin-left: 12px;
+  padding: 4px;
+//font
+  color: rgb(107, 111, 118);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 23px;
+  text-rendering: optimizeLegibility;
+  border: 1px solid transparent;
+  -webkit-text-size-adjust: 100%;
+  //transition: border 5s ease;
+  -webkit-transition: all .3s ease-in-out;
+  transition: all .3s ease-in-out;
+
+}
+.GymSetup__currentStep {
+  border: 1px solid rgb(223, 225, 228);
+  border-radius: 4px;
+  box-shadow: rgba(0, 0, 0, 0.11) 0px 5px 20px;
+  -webkit-transition: all .3s ease-in-out;
+  transition: all .3s ease-in-out;
+}
+
+.GymSetup__hoursInput {
+  appearance: none;
+  padding-left: 6px;
+  padding-right: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: rgb(255, 255, 255);
+  border: 1px solid rgb(223, 225, 228);
+  border-radius: 4px;
+  color: rgb(40, 42, 48);
+  margin: 0px;
+  appearance: none;
+  transition: border 0.3s;
+  //app-region: no-drag;
+  resize: none;
+  //width: 45%;
+  font-size: 10px;
+  font-family: 'Inter UI', Inter;
+}
+.GymSetup__hoursInput:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: rgb(33, 96, 220)
+}
+.GymSetup__stepTwoInputSpacer {
+  display: inline;
+}
+.GymSetup__amenitiesForm {
+  display: flex;
+  flex-direction: column;
+}
+.GymSetup__ammenitiesFlexRow {
+  display: flex;
+}
+.GymSetup__ammenitiesColumnOne {
+  display: flex;
+  flex-direction: column;
+}
+.GymSetup__stepThreeAmenitiesFlex {
+  display: flex;
+  width: 150px;
+}
+.GymSetup__amenitiesCheckboxInput {
+  margin-top: 2px;
+}
+.GymSetup__amenitiesCheckboxLabel {
+  color: rgb(107, 111, 118);
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 23px;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  text-align: center;
+  margin-top: 0px;
+  margin-left: 4px;
+}
