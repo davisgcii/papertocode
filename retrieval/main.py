@@ -9,8 +9,8 @@ from langchain.document_loaders import OnlinePDFLoader
 def get_context(arxiv_link: str, prompt: str) -> str:
 
     # Load the document
-    loader = OnlinePDFLoader()
-    doc = loader.load(arxiv_link)
+    loader = OnlinePDFLoader(arxiv_link)
+    doc = loader.load()
 
     # Split the document into sentences
     splitter = RecursiveCharacterTextSplitter()

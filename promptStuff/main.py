@@ -1,12 +1,13 @@
-
+from retrieval.main import get_context
+from prompts import layoutPrompt
 
 # use langchain and ingested paper to query for what the jupyter notebook layout should look like
 # create functino decorato
-def getLayout(url: str):
+def getLayout(arxiv_link: str):
     """
     getLayout(url: str) -> layout: list[str]
     """
-    return
+    return get_context(arxiv_link, layoutPrompt)
 
 ## for each portion of the layout, generate a simple prompt that can be used to query langchain
 def getSectionPrompt(section: str):
@@ -15,7 +16,7 @@ def getSectionPrompt(section: str):
     """
     return
 
-### for each prompt, query langchain to get the portions of the paper that are most relevant to that code section
+### for each section of the layout, query langchain to get the portions of the paper that are most relevant to that code section
 def getSectionContext(prompt: str):
     """
     getSectionContext(prompt: str) -> context: str
