@@ -1,0 +1,554 @@
+\documentclass{article}
+\usepackage{great}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{bm}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{xcolor}
+
+\makeatletter
+\usepackage{xspace}
+\DeclareRobustCommand\onedot{\futurelet\@let@token\@onedot}
+\def\@onedot{\ifx\@let@token.\else.\null\fi\xspace}
+\def\eg{\emph{e.g}\onedot}
+\def\ie{\emph{i.e}\onedot}
+\def\etal{\emph{et al}\onedot}
+\def\etc{\emph{etc}\onedot}
+\makeatother
+
+\makeatletter
+\newcommand*{\centerfloat}{%
+	\parindent \z@
+	\leftskip \z@ \@plus 1fil \@minus \textwidth
+	\rightskip\leftskip
+	\parfillskip \z@skip}
+\makeatother
+
+\title{Adding Conditional Control to Text-to-Image Diffusion Models}
+
+\author{\texttt{Lvmin Zhang and Maneesh Agrawala}\\\texttt{Stanford University}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\vspace{10pt}
+We present a neural network structure, ControlNet, to control pretrained large diffusion models to support additional input conditions.
+The ControlNet learns task-specific conditions in an end-to-end way, and the learning is robust even when the training dataset is small (< 50k).
+Moreover, training a ControlNet is as fast as fine-tuning a diffusion model, and the model can be trained on a personal devices. 
+Alternatively, if powerful computation clusters are available, the model can scale to large amounts (millions to billions) of data.
+We report that large diffusion models like Stable Diffusion can be augmented with ControlNets to enable conditional inputs like edge maps, segmentation maps, keypoints, \etc.
+This may enrich the methods to control large diffusion models and further facilitate related applications.
+
+\vspace{3pt}
+{\scriptsize\url{https://github.com/lllyasviel/ControlNet}}
+\end{abstract}
+
+\vspace{40pt}
+
+\section{Introduction}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{./imgs/teaser.pdf}
+	\caption{Control Stable Diffusion with Canny edge map. The canny edge map is input, and the source image is not used when we generate the images on the right. The outputs are achieved with a default prompt \emph{``a high-quality, detailed, and professional image''}. This prompt is used in this paper as a default prompt that does not mention anything about the image contents and object names. Most of figures in this paper are high-resolution images and best viewed when zoomed in.}
+	\label{fig:teaser}
+\end{figure}
+
+With the presence of large text-to-image models, generating a visually appealing image may require only a short descriptive prompt entered by users. 
+After typing some texts and getting the images, we may naturally come up with several questions: does this prompt-based control satisfy our needs? 
+For example in image processing, considering many long-standing tasks with clear problem formulations, can these large models be applied to facilitate these specific tasks? 
+What kind of framework should we build to handle the wide range of problem conditions and user controls? 
+In specific tasks, can large models preserve the advantages and capabilities obtained from billions of images? 
+
+To answer these questions, we investigate various image processing applications and have three findings. First, the available data scale in a task-specific domain is not always as large as that in the general image-text domain. The largest dataset size of many specific problems (\eg, object shape/normal, pose understanding, \etc) is often under 100k, \ie, $5\times10^4$ times smaller than LAION-5B. This would require robust neural network training method to avoid overfitting and to preserve generalization ability when the large models are trained for specific problems.
+
+Second, when image processing tasks are handled with data-driven solutions, large computation clusters are not always available. This makes fast training methods important for optimizing large models to specific tasks within an acceptable amount of time and memory space (\eg, on personal devices). This would further require the utilization of pretrained weights, as well as fine-tuning strategies or transfer learning.
+
+Third, various image processing problems have diverse forms of problem definitions, user controls, or image annotations. When addressing these problems, although an image diffusion algorithm can be regulated in a ``procedural’’ way, \eg, constraining denoising process, editing multi-head attention activations, \etc, the behaviors of these hand-crafted rules are fundamentally prescribed by human directives. Considering some specific tasks like depth-to-image, pose-to-human, \etc, these problems essentially require the interpretation of raw inputs into object-level or scene-level understandings, making hand-crafted procedural methods less feasible. To achieve learned solutions in many tasks, the end-to-end learning is indispensable.
+
+This paper presents ControlNet, an end-to-end neural network architecture that controls large image diffusion models (like Stable Diffusion) to learn task-specific input conditions. The ControlNet clones the weights of a large diffusion model into a "trainable copy" and a "locked copy": the locked copy preserves the network capability learned from billions of images, while the trainable copy is trained on task-specific datasets to learn the conditional control. The trainable and locked neural network blocks are connected with an unique type of convolution layer called "zero convolution", where the convolution weights progressively grow from zeros to optimized parameters in a learned manner. Since the production-ready weights are preserved, the training is robust at datasets of different scale. Since the zero convolution does not add new noise to deep features, the training is as fast as fine tuning a diffusion model, compared to training new layers from scratch.
+
+We train several ControlNets with various datasets of different conditions, \eg, Canny edges, Hough lines, user scribbles, human key points, segmentation maps, shape normals, depths, \etc. We also experiment ControlNets with both small datasets (with samples less than 50k or even 1k) and large datasets (millions of samples). We also show that in some tasks like depth-to-image, training ControlNets on a personal computer (one Nvidia RTX 3090TI) can achieve competitive results to commercial models trained on large computation clusters with terabytes of GPU memory and thousands of GPU hours.
+
+\section{Related Work}
+
+\subsection{HyperNetwork and Neural Network Structure}
+
+HyperNetwork originates from a neural language processing method \cite{ha2017hypernetworks} to train a small recurrent neural network to influence the weights of a larger one. Successful results of HyperNetwork are also reported in image generation using generative adversarial networks \cite{alaluf2021hyperstyle, dinh2022hyperinverter} and other machine learning tasks \cite{shamsian2021personalized}. Inspired by these ideas, \cite{heathen} provided a method to attach a smaller neural network to Stable Diffusion \cite{rombach2021highresolution} so as to change the artistic style of its output images. This approach gained more popularity after \cite{nai} provided the pretrained weights of several HyperNetworks. ControlNet and HyperNetwork have similarities in the way they influence the behaviors of neural networks.
+
+ControlNet uses a special type of convolution layer called ``zero convolution''. Early neural network studies \cite{726791,Rumelhart1986,LeCun2015} have extensively discussed the initialization of network weights, including the rationality of initializing the weights with Gaussian distributions and the risks that may incur by initializing the weights with zeros. More recently, \cite{2102.09672} discussed a method to scale the initial weight of several convolution layers in a diffusion model to improve the training, which shares similarity with the idea of zero convolution (and their codes contain a function called ``zero\_module''). Manipulating the initial convolution weights is also discussed in ProGAN~\cite{1710.10196} and StyleGAN~\cite{1812.04948}, as well as Noise2Noise~\cite{1803.04189} and \cite{DBLP:journals/corr/abs-2110-12661}. Stability's model cards \cite{sdd} also mention the use of zero weights in neural layers.
+
+\subsection{Diffusion Probabilistic Model}
+
+Diffusion probabilistic model was proposed in \cite{DBLP:journals/corr/Sohl-DicksteinW15}. Successful results of image generation are first reported at small scale \cite{DBLP:journals/corr/abs-2107-00630} and then relatively large scale \cite{DBLP:journals/corr/abs-2105-05233}. This architecture was improved by important training and sampling methods like Denoising Diffusion Probabilistic Model (DDPM) \cite{DBLP:conf/nips/HoJA20}, Denoising Diffusion Implicit Model (DDIM) \cite{DBLP:conf/iclr/SongME21}, and score-based diffusion \cite{DBLP:journals/corr/abs-2011-13456}.
+Image diffusion methods can directly use pixel colors as training data, and in that case, researches often consider strategies to save computation powers when handling high-resolution images \cite{DBLP:conf/iclr/SongME21, DBLP:journals/corr/abs-2104-02600, DBLP:journals/corr/abs-2106-00132}, or directly use pyramid-based or multiple-stage methods~\cite{DBLP:journals/corr/abs-2106-15282, ramesh2022hierarchical}.
+These methods essentially use U-net \cite{DBLP:conf/miccai/RonnebergerFB15} as their neural network architecture.
+In order to reduce the computation power required for training a diffusion model, based on the idea of latent image \cite{DBLP:journals/corr/abs-2012-09841}, the approach Latent Diffusion Model (LDM) \cite{rombach2021highresolution} was proposed and further extended to Stable Diffusion. 
+
+\subsection{Text-to-Image Diffusion}
+
+Diffusion models can be applied to text-to-image generating tasks to achieve state-of-the-art image generating results. This is often achieved by encoding text inputs into latent vectors using pretrained language models like CLIP \cite{2103.00020}. For instances, Glide \cite{nichol2021glide} is a text-guided diffusion models supporting both image generating and editing. Disco Diffusion is a clip-guided implementation of \cite{DBLP:journals/corr/abs-2105-05233} to process text prompts. Stable Diffusion is a large scale implementation of latent diffusion \cite{rombach2021highresolution} to achieve text-to-image generation. Imagen \cite{saharia2022photorealistic} is a text-to-image structure that does not use latent images and directly diffuse pixels using a pyramid structure.
+
+\subsection{Personalization,Customization, and Control of Pretrained Diffusion Model}
+
+Because state-of-the-art image diffusion models are dominated by text-to-image methods, the most straight-forward ways to enhance the control over a diffusion model are often text-guided \cite{nichol2021glide,kim2022diffusionclip,avrahami2022blended, 2211.09800, kawar2022imagic,ramesh2022hierarchical,hertz2022prompt}. This type of control can also be achieved by manipulating CLIP features \cite{ramesh2022hierarchical}. The image diffusion process by itself can provide some functionalities to achieve color-level detail variations \cite{meng2021sdedit} (the community of Stable Diffusion call it img2img). Image diffusion algorithms naturally supports inpainting as an important way to control the results \cite{ramesh2022hierarchical,avrahami2022blended}. Textual Inversion \cite{gal2022image} and DreamBooth \cite{ruiz2022dreambooth} are proposed to customize (or personalize) the contents in the generated results using a small set of images with same topics or objects.
+
+\subsection{Image-to-Image Translation}
+
+We would like to point out that, although the ControlNet and image-to-image translation may have several overlapped applications, their motivations are essentially different. Image-to-image translation is targeted to learn a mapping between images in different domains, while a ControlNet is targeted to control a diffusion model with task-specific conditions.
+
+Pix2Pix \cite{isola2017image} presented the concept of image-to-image translation, and early methods are dominated by conditional generative neural networks ~\cite{isola2017image,zhu2017toward,wang2018high,park2019semantic,choi2018stargan,zhang2020cross,zhou2021cocosnet}. After transformers and Vision Transformers (ViTs) gained popularity, successful results have been reported using autoregressive methods \cite{ramesh2021zero,DBLP:journals/corr/abs-2012-09841, chen2021pre}. Some researches also show that multi-model methods can learn a robust generator from various translation tasks \cite{zhang2021m6,kutuzova2021multimodal,huang2021multimodal,qian2019trinity}.
+
+We discuss the current strongest methods in image-to-image translation. 
+Taming Transformer \cite{DBLP:journals/corr/abs-2012-09841} is a vision transformer with the capability to both generate images and perform image-to-image translations.
+Palette \cite{10.1145/3528233.3530757} is an unified diffusion-based image-to-image translation framework. 
+PITI \cite{2205.12952} is a diffusion-based image-to-image translation method that utilizes large-scale pretraining as a way to improve the quality of generated results.
+In specific fields like sketch-guided diffusion, \cite{voynov2022sketch} is a optimization-based method that manipulates the diffusion process.
+These methods are tested in the experiments. 
+
+\section{Method}
+
+ControlNet is a neural network architecture that can enhance pretrained image diffusion models with task-specific conditions.
+We introduce ControlNet's essential structure and motivate of each part in Section~\ref{he}.
+We detail the method to apply ControlNets to image diffusion models using the example of Stable Diffusion in Section~\ref{hei}.
+We elaborate the learning objective and general training method in Section~\ref{train}, and then describe several approaches to improve the training in extreme cases such as training with one single laptop or using large-scale computing clusters in Section~\ref{train2}.
+Finally, we include the details of several ControlNet implementations with different input conditions in Section~\ref{misc}.
+
+\subsection{ControlNet}
+\label{he}
+
+ControlNet manipulates the input conditions of neural network blocks so as to further control the overall behavior of an entire neural network. Herein, a "network block" refers to a set of neural layers that are put together as a frequently used unit to build neural networks, \eg, ``resnet'' block, ``conv-bn-relu'' block, multi-head attention block, transformer block, \etc.
+
+Using 2D feature as an example, given a feature map $\bm{x}\in\mathbb{R}^{h\times w \times c}$ with $\{h, w, c\}$ being height, width, and channel numbers, a neural network block $\mathcal{F}(\cdot;\Theta)$ with a set of parameters $\Theta$ transforms $\bm{x}$ into another feature map $\bm{y}$ with 
+\begin{equation}
+	\bm{y}=\mathcal{F}(\bm{x};\Theta)
+\end{equation}
+and this procedure is visualized in Fig.~\ref{fig:he}-(a).
+
+We lock all parameters in $\Theta$ and then clone it into a trainable copy $\Theta_\text{c}$. The copied $\Theta_\text{c}$ is trained with an external condition vector $\bm{c}$. In this paper, we call the original and new parameters ``locked copy'' and ``trainable copy''. The motivation of making such copies rather than directly training the original weights is to avoid overfitting when dataset is small and to preserve the production-ready quality of large models learned from billions of images.
+
+The neural network blocks are connected by an unique type of convolution layer called ``zero convolution'', \ie, $1\times 1$ convolution layer with both weight and bias initialized with zeros. We denote the zero convolution operation as $\mathcal{Z}(\cdot;\cdot)$ and use two instances of parameters $\{\Theta_\text{z1}, \Theta_\text{z2}\}$ to compose the ControlNet structure with
+\begin{equation}
+	\label{key1}
+	\bm{y}_\text{c}=\mathcal{F}(\bm{x};\Theta)+\mathcal{Z}(\mathcal{F}(\bm{x}+\mathcal{Z}(\bm{c};\Theta_\text{z1});\Theta_\text{c});\Theta_\text{z2})
+\end{equation}
+where $\bm{y}_\text{c}$ becomes the output of this neural network block, as visualized in Fig.~\ref{fig:he}-(b).
+
+Because both the weight and bias of a zero convolution layer are initialized as zeros, in the first training step, we have
+\begin{equation}
+	\label{key2}
+	\left\{
+	\begin{aligned}
+		&\mathcal{Z}(\bm{c};\Theta_\text{z1}) = \bm{0} \\
+		&\mathcal{F}(\bm{x}+\mathcal{Z}(\bm{c};\Theta_\text{z1});\Theta_\text{c})=\mathcal{F}(\bm{x};\Theta_\text{c}) = \mathcal{F}(\bm{x};\Theta)\\
+		&\mathcal{Z}(\mathcal{F}(\bm{x}+\mathcal{Z}(\bm{c};\Theta_\text{z1});\Theta_\text{c});\Theta_\text{z2}) =\mathcal{Z}(\mathcal{F}(\bm{x};\Theta_\text{c});\Theta_\text{z2}) = \bm{0}
+	\end{aligned}
+	\right.
+\end{equation}
+and this can be converted to
+\begin{equation}
+	\label{key3}
+	\bm{y}_\text{c} = \bm{y}
+\end{equation}
+and Eq-(\ref{key1},\ref{key2},\ref{key3}) indicate that, in the first training step, all the inputs and outputs of both the trainable and locked copy of neural network blocks are consistent with what they would be as if the ControlNet does not exist. In other words, when a ControlNet is applied to some neural network blocks, before any optimization, it will not cause any influence to the deep neural features. The capability, functionality, and result quality of any neural network block is perfectly preserved, and any further optimization will become as fast as fine tuning (compared to train those layers from scratch).
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.825\linewidth]{./imgs/he.pdf}
+	\caption{ControlNet. We show the approach to apply a ControlNet to an arbitrary neural network block. The $x, y$ are deep features in neural networks. The ``+'' refers to feature addition. The ``c'' is an extra condition that we want to add to the neural network. The ``zero convolution'' is an $1\times 1$ convolution layer with both weight and bias initialized as zeros.}
+	\label{fig:he}
+\end{figure}
+
+We briefly deduce the gradient calculation of a zero convolution layer. Considering an $1\times 1$ convolution layer with weight $\bm{W}$ and bias $\bm{B}$, at any spatial position $p$ and channel-wise index $i$, given an input map $\bm{I}\in\mathbb{R}^{h\times w \times c}$, the forward pass can be written as 
+\begin{equation}
+	\mathcal{Z}(\bm{I};\{\bm{W},\bm{B}\})_{p,i}=\bm{B}_i + \sum_{j}^c \bm{I}_{p,i} \bm{W}_{i,j}
+\end{equation}
+and since zero convolution has $\bm{W}=\bm{0}$ and $\bm{B}=\bm{0}$ (before optimization), for anywhere with $\bm{I}_{p,i}$ being non-zero, the gradients become
+\begin{equation}
+	\left\{
+	\begin{aligned}
+		&\frac{\partial\mathcal{Z}(\bm{I};\{\bm{W},\bm{B}\})_{p,i}}{\partial\bm{B}_{i}} = 1 \\
+		&\frac{\partial\mathcal{Z}(\bm{I};\{\bm{W},\bm{B}\})_{p,i}}{\partial\bm{I}_{p,i}} = \sum_{j}^c \bm{W}_{i,j} = 0 \\
+		&\frac{\partial\mathcal{Z}(\bm{I};\{\bm{W},\bm{B}\})_{p,i}}{\partial\bm{W}_{i,j}} = \bm{I}_{p,i} \neq \bm{0} \\
+	\end{aligned}
+	\right.
+\end{equation}
+and we can see that although a zero convolution can cause the gradient on the feature term $\bm{I}$ to become zero, the weight's and bias's gradients are not influenced. As long as the feature $\bm{I}$ is non-zero, the weight $\bm{W}$ will be optimized into non-zero matrix in the first gradient descent iteration. Notably, in our case, the feature term is input data or condition vectors sampled from datasets, which naturally ensures non-zero $\bm{I}$. For example, considering a classic gradient descent with an overall loss function $\mathcal{L}$ and a learning rate $\beta_{\text{lr}}\neq 0$, if the ``outside'' gradient ${\partial\mathcal{L}}/{\partial\mathcal{Z}(\bm{I};\{\bm{W},\bm{B}\})}$ is not zero, we will have
+\begin{equation}
+\bm{W}^* = \bm{W} - \beta_{\text{lr}} \cdot \frac{\partial\mathcal{L}}{\partial\mathcal{Z}(\bm{I};\{\bm{W},\bm{B}\})} \odot \frac{\partial\mathcal{Z}(\bm{I};\{\bm{W},\bm{B}\})}{\partial\bm{W}} \neq \bm{0}
+\end{equation}
+where $\bm{W}^*$ is the weight after one gradient descent step; $\odot$ is Hadamard product. After this step, we will have
+\begin{equation}
+\frac{\partial\mathcal{Z}(\bm{I};\{\bm{W}^*,\bm{B}\})_{p,i}}{\partial\bm{I}_{p,i}} = \sum_{j}^c \bm{W}^*_{i,j} \neq \bm{0}
+\end{equation}
+
+where non-zero gradients are obtained and the neural network begins to learn. In this way, the zero convolutions become an unique type of connection layer that progressively grow from zeros to optimized parameters in a learned way.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{./imgs/sd.pdf}
+	\caption{ControlNet in Stable Diffusion. The gray blocks are the structure of Stable Diffusion 1.5 (or SD V2.1, since they use the same U-Net architecture), while the blue blocks are ControlNet.}
+	\label{fig:hesd} 
+\end{figure}
+
+\subsection{ControlNet in Image Diffusion Model}
+\label{hei}
+
+We use the Stable Diffusion \cite{rombach2021highresolution} as an example to introduce the method to use ControlNet to control a large diffusion model with task-specific conditions.
+
+Stable Diffusion is a large text-to-image diffusion model trained on billions of images. The model is essentially an U-net with an encoder, a middle block, and a skip-connected decoder. Both the encoder and decoder have 12 blocks, and the full model has 25 blocks (including the middle block). In those blocks, 8 blocks are down-sampling or up-sampling convolution layers, 17 blocks are main blocks that each contains four resnet layers and two Vision Transformers (ViTs). Each Vit contains several cross-attention and/or self-attention mechanisms. The texts are encoded by OpenAI CLIP, and diffusion time steps are encoded by positional encoding.
+
+Stable Diffusion uses a pre-processing method similar to VQ-GAN~\cite{DBLP:journals/corr/abs-2012-09841} to convert the entire dataset of $512\times 512$ images into smaller $64\times 64$ ``latent images'' for stabilized training. This requires ControlNets to convert image-based conditions to $64\times 64$ feature space to match the convolution size. We use a tiny network $\mathcal{E}(\cdot)$ of four convolution layers with $4\times 4$ kernels and $2 \times 2$ strides (activated by ReLU, channels are 16, 32, 64, 128, initialized with Gaussian weights, trained jointly with the full model) to encode image-space conditions $\bm{c}_\text{i}$ into feature maps with
+\begin{equation}
+	\bm{c}_\text{f}=\mathcal{E}(\bm{c}_\text{i})
+\end{equation}
+where $\bm{c}_\text{f}$ is the converted feature map. This network convert $512\times 512$ image conditions to $64\times 64$ feature maps.
+
+As shown in Fig.~\ref{fig:hesd}, we use ControlNet to control each level of the U-net. Note that the way we connect the ControlNet is computationally efficient: since the original weights are locked, no gradient computation on the original encoder is needed for training. This can speed up training and save GPU memory, as half of the gradient computation on the original model can be avoided. Training a stable diffusion model with ControlNet requires only about 23\% more GPU memory and 34\% more time in each training iteration (as tested on a single Nvidia A100 PCIE 40G).
+
+To be specific, we use ControlNet to create the trainable copy of the 12 encoding blocks and 1 middle block of Stable Diffusion. The 12 blocks are in 4 resolutions ($64\times64,32\times32,16\times16,8\times8$) with each having 3 blocks. The outputs are added to the 12 skip-connections and 1 middle block of the U-net. Since SD is a typical U-net structure, this ControlNet architecture is likely to be usable in other diffusion models.
+
+\subsection{Training}
+\label{train}
+
+Image diffusion models learn to progressively denoise images to generate samples. The denoising can happen in pixel space or a ``latent'' space encoded from training data. Stable Diffusion uses latent images as the training domain. In this context, the terminology ``image'', ''pixel'', and ``denoising'' all refers to corresponding concepts in the ``perceptual latent space'' \cite{rombach2021highresolution}.
+
+Given an image $\bm{z}_0$, diffusion algorithms progressively add noise to the image and produces a noisy image $\bm{z}_t$, with $t$ being how many times the noise is added. When $t$ is large enough, the image approximates pure noise. Given a set of conditions including time step $t$, text prompts $\bm{c}_t$, as well as a task-specific conditions $\bm{c}_\text{f}$, image diffusion algorithms learn a network $\epsilon_\theta$ to predict the noise added to the noisy image $\bm{z}_t$ with
+\begin{equation}
+	\mathcal{L} = \mathbb{E}_{\bm{z}_0, t, \bm{c}_t, \bm{c}_\text{f}, \epsilon \sim \mathcal{N}(0, 1) }\Big[ \Vert \epsilon - \epsilon_\theta(z_{t}, t, \bm{c}_t, \bm{c}_\text{f})) \Vert_{2}^{2}\Big]
+	\label{eq:loss}
+\end{equation}
+where $\mathcal{L}$ is the overall learning objective of the entire diffusion model. This learning objective can be directly used in fine tuning diffusion models.
+
+During the training, we randomly replace 50\% text prompts $\bm{c}_t$ with empty strings. This facilitates ControlNet's capability to recognize semantic contents from input condition maps, \eg, Canny edge maps or human scribbles, \etc. This is mainly because when the prompt is not visible for the SD model, the encoder tends to learn more semantics from input control maps as a replacement for the prompt.
+
+\subsection{Improved Training}
+\label{train2}
+
+We discuss several strategies to improve the training of ControlNets, especially in extreme cases when the computation device is very limited (\eg, on a laptop) or very powerful (\eg, on a computation cluster with large-scale GPUs available). In our experiments, if any of these strategies are used, we will mention in the experimental settings.
+
+\paragraph{Small-Scale Training}
+
+When computation device is limited, we find that partially breaking the connection between a ControlNet and the Stable Diffusion can accelerate convergence. By default, we connect the ControlNet to ``SD Middle Block'' and ``SD Decoder Block 1,2,3,4'' as shown in Fig.~\ref{fig:hesd}. We find that disconnecting the link to decoder 1,2,3,4 and only connecting the middle block can improve the training speed by about a factor of 1.6 (tested on RTX 3070TI laptop GPU). When the model shows reasonable association between results and conditions, those disconnected links can be connected again in a continued training to facilitate accurate control.
+
+\paragraph{Large-Scale Training}
+
+Herein, the large-scale training refers to the situation where both powerful computation clusters (at least 8 Nvidia A100 80G or equivalent) and large dataset (at least 1 million of training image pairs) are available. This usually applies to tasks where data is easily available, \eg, edge maps detected by Canny. In this case, since the risk of over-fitting is relatively low, we can first train ControlNets for a large enough number of iterations (usually more than 50k steps), and then unlock all weights of the Stable Diffusion and jointly train the entire model as a whole. This would lead to a more problem-specific model.
+
+\subsection{Implementation}
+\label{misc}
+
+We present several implementations of ControlNets with different image-based conditions to control large diffusion models in various ways.
+
+\paragraph{Canny Edge} We use Canny edge detector \cite{4767851} (with random thresholds) to obtain 3M edge-image-caption pairs from the internet. The model is trained with 600 GPU-hours with Nvidia A100 80G. The base model is Stable Diffusion 1.5. (See also Fig.~\ref{fig:edge2img}.)
+
+\paragraph{Canny Edge (Alter)} We rank the image resolutions of the above Canny edge dataset and sampled several sub-set with 1k, 10k, 50k, 500k samples. We use the same experimental setting to test the effect of dataset scale. (See also Fig.~\ref{fig:ex2}.)
+
+\paragraph{Hough Line} We use a learning-based deep Hough transform \cite{gu2021realtime} to detect straight lines from Places2 \cite{zhou2017places}, and then use BLIP \cite{li2022blip} to generate captions. We obtain 600k edge-image-caption pairs. We use the above Canny model as a starting checkpoint and train the model with 150 GPU-hours with Nvidia A100 80G. (See also Fig.~\ref{fig:hough}.)
+
+\paragraph{HED Boundary} We use HED boundary detection \cite{7410521} to obtain 3M edge-image-caption pairs from internet. The model is trained with 300 GPU-hours with Nvidia A100 80G. The base model is Stable Diffusion 1.5. (See also Fig.~\ref{fig:hed}.)
+
+\paragraph{User Sketching} We synthesize human scribbles from images using a combination of HED boundary detection \cite{7410521} and a set of strong data augmentations (random thresholds, randomly masking out a random percentage of scribbles, random morphological transformations, and random non-maximum suppression). We obtain 500k scribble-image-caption pairs from internet. We use the above Canny model as a starting checkpoint and train the model with 150 GPU-hours with Nvidia A100 80G. Note that we also tried a more ``human-like'' synthesizing method \cite{2211.17256} but the method is much slower than a simple HED and we do not notice visible improvements. (See also Fig.~\ref{fig:scribble}.)
+
+\paragraph{Human Pose (Openpifpaf)} We use learning-based pose estimation method \cite{kreiss2021openpifpaf} to ``find'' humans from internet using a simple rule: an image with human must have at least 30\% of the key points of the whole body detected. We obtain 80k pose-image-caption pairs. Note that we directly use visualized pose images with human skeletons as training condition. The model is trained with 400 GPU-hours on Nvidia RTX 3090TI. The base model is Stable Diffusion 2.1. (See also Fig.~\ref{fig:key}.)
+
+\paragraph{Human Pose (Openpose)} We use learning-based pose estimation method \cite{8765346} to find humans from internet using the same rule in the above Openpifpaf setting. We obtain 200k pose-image-caption pairs. Note that we directly use visualized pose images with human skeletons as training condition. The model is trained with 300 GPU-hours with Nvidia A100 80G. Other settings are same with the above Openpifpaf. (See also Fig.~\ref{fig:key2}.)
+
+\paragraph{Semantic Segmentation (COCO)} The COCO-Stuff dataset \cite{1612.03716} captioned by BLIP \cite{li2022blip}. We obtain 164K segmentation-image-caption pairs. The model is trained with 400 GPU-hours on Nvidia RTX 3090TI. The base model is Stable Diffusion 1.5. (See also Fig.~\ref{fig:coco}.)
+
+\paragraph{Semantic Segmentation (ADE20K)} The ADE20K dataset \cite{8100027} captioned by BLIP \cite{li2022blip}. We obtain 164K segmentation-image-caption pairs. The model is trained with 200 GPU-hours on Nvidia A100 80G. The base model is Stable Diffusion 1.5. (See also Fig.~\ref{fig:ade}.)
+
+\paragraph{Depth (large-scale)} We use the Midas \cite{DBLP:journals/corr/abs-1907-01341} to obtain 3M depth-image-caption pairs from internet. The model is trained with 500 GPU-hours with Nvidia A100 80G. The base model is Stable Diffusion 1.5. (See also Fig.~\ref{fig:cc3},\ref{fig:cc1},\ref{fig:cc2}.)
+
+\paragraph{Depth (small-scale)} We rank the image resolutions of the above depth dataset to sample a subset of 200k pairs. This set is used in experimenting the minimal required dataset size to train the model. (See also Fig.~\ref{fig:depth}.)
+
+\paragraph{Normal Maps} The DIODE dataset \cite{diode_dataset} captioned by BLIP \cite{li2022blip}. We obtain 25,452 normal-image-caption pairs. The model is trained with 100 GPU-hours on Nvidia A100 80G. The base model is Stable Diffusion 1.5. (See also Fig.~\ref{fig:normal}.)
+
+\paragraph{Normal Maps (extended)} We use the Midas \cite{DBLP:journals/corr/abs-1907-01341} to compute depth map and then perform normal-from-distance to achieve ``coarse'' normal maps. We use the above Normal model as a starting checkpoint and train the model with 200 GPU-hours with Nvidia A100 80G. (See also Fig.~\ref{fig:cc3},\ref{fig:cc1},\ref{fig:cc2}.)
+
+\paragraph{Cartoon Line Drawing} We use a cartoon line drawing extracting method \cite{Anime2Sketch} to extract line drawings from cartoon illustration from internet. By sorting the cartoon images with popularity, we obtain the top 1M lineart-cartoon-caption pairs. The model is trained with 300 GPU-hours with Nvidia A100 80G. The base model is Waifu Diffusion (an interesting community-developed variation model from stable diffusion \cite{waifu}). (See also Fig.~\ref{fig:anime}.)
+
+\section{Experiment}
+
+\subsection{Experimental Settings}
+
+All results in this paper is achieved with CFG-scale at 9.0. The sampler is DDIM. We use 20 steps by default. We use three types of prompts to test the models:
+
+(1) No prompt: We use empty string ``'' as prompt.
+
+(2) Default prompt: Since Stable diffusion is essentially trained with prompts, the empty string might be an unexpected input for the model, and SD tends to generate random texture maps if no prompt is provided. A better setting is to use meaningless prompts like ``an image'', ``a nice image'', ``a professional image'', \etc. In our setting, we use ``a professional, detailed, high-quality image'' as default prompt.
+
+(3) Automatic prompt: In order to test the state-of-the-art maximized quality of a fully automatic pipeline, we also try to use automatic image captioning methods (\eg, BLIP \cite{li2022blip}) to generate prompts using the results obtained by ``default prompt'' mode. We use the generated prompt to diffusion again.
+
+(4) User prompt: Users give the prompts.
+
+\subsection{Qualitative Results}
+
+We present qualitative results in Fig.~\ref{fig:edge2img}, \ref{fig:hough},\ref{fig:scribble},\ref{fig:hed},\ref{fig:key},\ref{fig:key2},\ref{fig:mj},\ref{fig:ade},\ref{fig:coco},\ref{fig:normal},\ref{fig:depth},\ref{fig:anime}.
+
+\subsection{Ablation Study}
+
+Fig.~\ref{fig:abla} shows a comparison to a model trained without using ControlNet. That model is trained with exactly same method with Stability's Depth-to-Image model (Adding a channel to the SD and continue the training). 
+
+Fig.~\ref{fig:ex1} shows the training process. We would like to point out a ``sudden convergence phenomenon'' where the model suddenly be able to follow the input conditions. This can happen during the training process from 5000 to 10000 steps when using 1e-5 as the learning rate.
+
+Fig.~\ref{fig:ex2} shows Canny-edge-based ControlNets trained with different dataset scales.
+
+\subsection{Comparison to previous methods}
+
+Fig.~\ref{fig:depth} shows the comparison to Stability's Depth-to-Image model.
+
+Fig.~\ref{fig:piti} shows a comparison to PITI \cite{2205.12952}.
+
+Fig.~\ref{fig:scr} shows a comparison to sketch-guided diffusion \cite{voynov2022sketch}.
+
+Fig.~\ref{fig:tam} shows a comparison to Taming transformer \cite{DBLP:journals/corr/abs-2012-09841}.
+
+\subsection{Comparison of pre-trained models}
+
+We show comparisons of different pre-trained models in Fig.~\ref{fig:cc3}, \ref{fig:cc1}, \ref{fig:cc2}.
+
+\subsection{More Applications}
+
+Fig.~\ref{fig:edge_inpaint} show that if the diffusion process is masked, the models can be used in pen-based image editing.
+
+Fig.~\ref{fig:mat} show that when object is relatively simple, the model can achieve relatively accurate control of the details.
+
+Fig.~\ref{fig:retrive} shows that when ControlNet is only applied to 50\% diffusion iterations, users can get results that do not follow the input shapes.
+
+\section{Limitation}
+
+Fig.~\ref{fig:lim1} shows that when the semantic interpretation is wrong, the model may have difficulty to generate correct contents.
+
+\section*{Appendix}
+
+Fig.~\ref{fig:appe} shows all source images in this paper for edge detection, pose extraction, \etc.
+
+\begin{figure}
+\vspace{-35pt}
+\centerfloat
+\begin{minipage}{1.4\linewidth}
+\includegraphics[width=\linewidth]{./imgs/edge2img.pdf}
+\caption{Controlling Stable Diffusion with Canny edges. The ``automatic prompts'' are generated by BLIP based on the default result images without using user prompts. See also the Appendix for source images for canny edge detection.}
+\label{fig:edge2img} 
+\end{minipage}
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/hough.pdf}
+		\caption{Controlling Stable Diffusion with Hough lines (M-LSD). The ``automatic prompts'' are generated by BLIP based on the default result images without using user prompts. See also the Appendix for source images for line detection.}
+		\label{fig:hough} 
+	\end{minipage}
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/scribble.pdf}
+		\caption{Controlling Stable Diffusion with Human scribbles. The ``automatic prompts'' are generated by BLIP based on the default result images without using user prompts. These scribbles are from \cite{voynov2022sketch}.}
+			\label{fig:scribble} 
+	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/hed.pdf}
+		\caption{Controlling Stable Diffusion with HED boundary map. The ``automatic prompts'' are generated by BLIP based on the default result images without using user prompts. See also the Appendix for source images for HED boundary detection.}
+			\label{fig:hed} 
+	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\vspace{-50pt}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/key.pdf}
+	\vspace{-5pt}
+		\caption{Controlling Stable Diffusion with Openpifpaf pose. See also the Appendix for source images for Openpifpaf pose detection.}
+	\label{fig:key} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\vspace{-5pt}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/key2.pdf}
+		\vspace{-5pt}
+		\caption{Controlling Stable Diffusion with Openpose. See also the Appendix for source images for Openpose pose detection.}
+	\label{fig:key2} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{./imgs/mj.pdf}
+	\caption{Controlling Stable Diffusion with human pose to generate different poses for a same person (``Michael Jackson's concert''). Images are not cherry picked. See also the Appendix for source images for Openpose pose detection.}
+	\label{fig:mj} 
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/ade.pdf}
+		\caption{Controlling Stable Diffusion with ADE20K \cite{8100027} segmentation map. All results are achieved with default prompt. See also the Appendix for source images for semantic segmentation map extraction.}
+	\label{fig:ade} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.75\linewidth]{./imgs/seg.pdf}
+	\caption{Controlling Stable Diffusion with COCO-Stuff \cite{1612.03716} segmentation map.}
+	\label{fig:coco} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.75\linewidth]{./imgs/shape.pdf}
+	\caption{Controlling Stable Diffusion with DIODE \cite{diode_dataset} normal map.}
+	\label{fig:normal} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.86\linewidth]{./imgs/depth.pdf}
+	\caption{Comparison of Depth-based ControlNet and Stable Diffusion V2 Depth-to-Image. Note that in this experiment, the Depth-based ControlNet is trained at a relatively small scale to test minimal required computation resources. We also provide relatively stronger models that are trained at relatively large scale.}
+	\label{fig:depth} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.8\linewidth]{./imgs/anime.pdf}
+	\caption{Controlling Stable Diffusion (anime weights) with cartoon line drawings. The line drawings are inputs and there are no corresponding ``ground truths''. This model may be used in artistic creation tools.}
+	\label{fig:anime} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.9\linewidth]{./imgs/edge_inpaint.pdf}
+	\caption{Masked Diffusion. By diffusing images in masked areas, the Canny-edge model can be used to support pen-based editing of image contents. Since all diffusion models naturally support masked diffusion, the other models are also likely to be used in manipulating images.}
+	\label{fig:edge_inpaint} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.95\linewidth]{./imgs/com_seg.pdf}
+	\caption{Comparison to Pretraining-Image-to-Image (PITI) \cite{2205.12952}. Note that the semantic consistency of the ``wall'', ``paper'', and ``cup'' is difficult to handle in this task.}
+	\label{fig:piti} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.6\linewidth]{./imgs/com_scr.pdf}
+	\caption{Comparison to Sketch-guided diffusion \cite{voynov2022sketch}. This input is one of the most challenging cases in their paper.}
+	\label{fig:scr} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.68\linewidth]{./imgs/com_tam.pdf}
+	\caption{Comparison to Taming Transformers \cite{DBLP:journals/corr/abs-2012-09841}. This input is one of the most challenging cases in their paper.}
+	\label{fig:tam} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{./imgs/abla.pdf}
+	\caption{Ablative study. We compare the ControlNet structure with a standard method that Stable Diffusion uses as default way to add conditions to diffusion models.}
+	\label{fig:abla} 
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.5\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/ex1.pdf}
+		\caption{The sudden converge phenomenon. Because we use zero convolutions, the neural network always predict high-quality images during the entire training. At a certain point of training step, the model suddenly learns to adapt to the input conditions. We call this ``sudden converge phenomenon''.}
+	\label{fig:ex1} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.5\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/ex2.pdf}
+		\caption{Training on different scale. We show the Canny-edge-based ControlNet trained on different experimental settings with various dataset size.}
+	\label{fig:ex2} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/cc3.pdf}
+		\caption{Comparison of six detection types and the corresponding results. The scribble map is extracted from the HED map with morphological transforms.}
+	\label{fig:cc3} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/cc1.pdf}
+	\caption{(Continued) Comparison of six detection types and the corresponding results. The scribble map is extracted from the HED map with morphological transforms.}
+	\label{fig:cc1} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centerfloat
+	\begin{minipage}{1.4\linewidth}
+		\includegraphics[width=\linewidth]{./imgs/cc2.pdf}
+	\caption{(Continued) Comparison of six detection types and the corresponding results. The scribble map is extracted from the HED map with morphological transforms.}
+	\label{fig:cc2} 	\end{minipage}
+
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.85\linewidth]{./imgs/mat.pdf}
+	\caption{Example of simple object. When the diffusion content is relatively simple, the model can achieve very accurate control to manipulate the content materials.}
+	\label{fig:mat} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.85\linewidth]{./imgs/retrive.pdf}
+	\caption{Coarse-level control. When users do not want their input shape to be preserved in the images, we can simply replace the last 50\% diffusion iterations with standard SD without ControlNet. The resulting effect is similar to image retrieval but those images are generated.}
+	\label{fig:retrive} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.75\linewidth]{./imgs/lim1.pdf}
+	\caption{Limitation. When the semantic of input image is mistakenly recognized, the negative effects seem difficult to be eliminated, even if a strong prompt is provided.}
+	\label{fig:lim1} 
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{./imgs/appe.pdf}
+	\caption{Appendix: all original source images for edge detection, semantic segmentation, pose extraction, \etc. Note that some images may have copyrights.}
+	\label{fig:appe} 
+\end{figure}
+
+\bibliographystyle{abbrvnat}
+\bibliography{diff}
+
+\end{document}
