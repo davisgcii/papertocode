@@ -1,5 +1,8 @@
 import streamlit as st
 from io import StringIO
+import os
+
+from retrieval.single_prompt import generate_code
 
 
 st.title("Papers with Code")
@@ -16,7 +19,10 @@ if uploaded_file is not None:
     string_data = stringio.read()
     col1.header(len(string_data))
 
-    col1.header("Paper Contents")
-    col1.latex(rf"""{string_data} """)
+    with st.expander("Show LaTeX"):
+        st.header("Paper Contents")
+        st.code(rf"""{string_data} """, language="latex")
 
-    col2.header("Generated Code")
+    with st.expander("Show Generated Code"):
+        st.header("Generated Code")
+        st.code(generate_code(string_data, model_name=os.environ["OPENAI_MODEL_NAME"]))
