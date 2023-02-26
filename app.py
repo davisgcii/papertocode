@@ -1,11 +1,12 @@
 import streamlit as st
 from io import StringIO
 import os
+import time
 
-from retrieval.single_prompt import generate_code
+from retrieval.single_prompt import generate_code, summarize_paper
 
 
-st.title("Papers with Code")
+st.title("Papers Without Code")
 
 uploaded_file = st.file_uploader("Choose a file")
 
@@ -24,10 +25,18 @@ if uploaded_file is not None:
         st.code(rf"""{string_data} """, language="latex")
 
 
+    summary = summarize_paper(string_data, model_name=os.environ["OPENAI_MODEL_NAME"])
+    with st.expander("Paper Summary"):
+        st.header("Summary")
+        # print(summary)
+        st.write(summary)
+
+
     bar = st.progress(0, "Generating Code")
     code = "import torch"
     for complete in range(5):
-        code += generate_code(string_data, model_name=os.environ["OPENAI_MODEL_NAME"], code=code)
+        code += generate_code(summary, code=code, model_name=os.environ["OPENAI_MODEL_NAME"])
+        time.sleep(1)
         bar.progress((complete + 1) * 20)
         
     with st.expander("Show Generated Code"):
